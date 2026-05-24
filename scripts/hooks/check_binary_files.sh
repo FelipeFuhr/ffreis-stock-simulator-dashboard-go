@@ -2,6 +2,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+# shellcheck source=../lib/common.sh
 source "$(dirname "$0")/../lib/common.sh"
 
 has_error=0
