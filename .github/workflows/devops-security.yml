@@ -85,7 +85,9 @@ jobs:
       upload-sarif: ${{ github.event_name != 'pull_request' || github.event.pull_request.head.repo.fork == false }}
 
   snyk:
-    if: ${{ secrets.SNYK_TOKEN != '' }}
+    # Gate via repo variable (vars.SNYK_ENABLED). The `secrets` context is not
+    # available in job-level `if:` — using it triggers a startup_failure.
+    if: ${{ vars.SNYK_ENABLED == 'true' }}
     permissions:
       contents: read
       security-events: write
