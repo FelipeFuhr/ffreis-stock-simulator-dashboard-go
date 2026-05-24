@@ -2,6 +2,7 @@
 set -euo pipefail
 IFS=$'\n\t'
 
+# shellcheck source=scripts/lib/common.sh
 source "$(dirname "$0")/../lib/common.sh"
 
 MAX_SIZE_BYTES="${MAX_SIZE_BYTES:-1048576}"
