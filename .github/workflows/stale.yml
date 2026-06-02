@@ -2,7 +2,7 @@ name: DevOps / Stale
 
 on:
   schedule:
-    - cron: "0 6 * * 1"
+    - cron: "1 12 21 * *"  # monthly scattered (was: 0 6 * * 1)
   workflow_dispatch:
   push:
     branches: [main]
