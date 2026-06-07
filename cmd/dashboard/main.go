@@ -81,6 +81,13 @@ const (
 	ctxKeyRequestID ctxKey = "request_id"
 )
 
+const (
+	errMsgPayloadTooLarge  = "payload too large"
+	errMsgFlowIDRequired   = "flow id is required"
+	headerContentType      = "Content-Type"
+	mimeApplicationJSON    = "application/json"
+)
+
 type pageData struct {
 	SimulatorBaseURL string
 	PollMs           int
@@ -440,7 +447,7 @@ func serveWithShutdown(logger *slog.Logger, server *http.Server, shutdownTimeout
 	return nil
 }
 
-func getEnv(key string, fallback string) string {
+func getEnv(key, fallback string) string {
 	v := strings.TrimSpace(os.Getenv(key))
 	if v == "" {
 		return fallback
@@ -706,7 +713,7 @@ func (a *app) handleReset(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil && !errors.Is(err, io.EOF) {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {
-			http.Error(w, "payload too large", http.StatusRequestEntityTooLarge)
+			http.Error(w, errMsgPayloadTooLarge, http.StatusRequestEntityTooLarge)
 			return
 		}
 		http.Error(w, "invalid reset payload", http.StatusBadRequest)
@@ -727,7 +734,7 @@ func (a *app) handleStep(w http.ResponseWriter, r *http.Request) {
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {
-			http.Error(w, "payload too large", http.StatusRequestEntityTooLarge)
+			http.Error(w, errMsgPayloadTooLarge, http.StatusRequestEntityTooLarge)
 			return
 		}
 		http.Error(w, "invalid step payload", http.StatusBadRequest)
@@ -790,7 +797,7 @@ func (a *app) handleSimStepMany(w http.ResponseWriter, r *http.Request) {
 	}
 	flowID := strings.TrimSpace(r.PathValue("id"))
 	if flowID == "" {
-		http.Error(w, "flow id is required", http.StatusBadRequest)
+		http.Error(w, errMsgFlowIDRequired, http.StatusBadRequest)
 		return
 	}
 	raw, ok := readJSONPayload(w, r, a.maxBodyBytes, "invalid simulation step payload")
@@ -812,7 +819,7 @@ func (a *app) handleSimObserveFlow(w http.ResponseWriter, r *http.Request) {
 	}
 	flowID := strings.TrimSpace(r.PathValue("id"))
 	if flowID == "" {
-		http.Error(w, "flow id is required", http.StatusBadRequest)
+		http.Error(w, errMsgFlowIDRequired, http.StatusBadRequest)
 		return
 	}
 	path := withQuery(fmt.Sprintf("/v1/flows/%s/observe", url.PathEscape(flowID)), r.URL.RawQuery)
@@ -830,7 +837,7 @@ func (a *app) handleSimTraceFlow(w http.ResponseWriter, r *http.Request) {
 	}
 	flowID := strings.TrimSpace(r.PathValue("id"))
 	if flowID == "" {
-		http.Error(w, "flow id is required", http.StatusBadRequest)
+		http.Error(w, errMsgFlowIDRequired, http.StatusBadRequest)
 		return
 	}
 	path := withQuery(fmt.Sprintf("/v1/flows/%s/trace", url.PathEscape(flowID)), r.URL.RawQuery)
@@ -848,7 +855,7 @@ func (a *app) handleSimDeleteFlow(w http.ResponseWriter, r *http.Request) {
 	}
 	flowID := strings.TrimSpace(r.PathValue("id"))
 	if flowID == "" {
-		http.Error(w, "flow id is required", http.StatusBadRequest)
+		http.Error(w, errMsgFlowIDRequired, http.StatusBadRequest)
 		return
 	}
 	path := withQuery(fmt.Sprintf("/v1/flows/%s", url.PathEscape(flowID)), r.URL.RawQuery)
@@ -950,7 +957,7 @@ func (a *app) handleOpenAPI(w http.ResponseWriter, r *http.Request) {
 	if !a.authorizeSwaggerOr401(w, r) {
 		return
 	}
-	w.Header().Set("Content-Type", "application/yaml; charset=utf-8")
+	w.Header().Set(headerContentType, "application/yaml; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(a.openAPISpec)
 }
@@ -959,7 +966,7 @@ func (a *app) handleSwaggerUI(w http.ResponseWriter, r *http.Request) {
 	if !a.authorizeSwaggerOr401(w, r) {
 		return
 	}
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set(headerContentType, "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
 	_, _ = fmt.Fprint(w, swaggerUIHTML)
 }
@@ -1060,11 +1067,11 @@ func (a *app) forwardJSON(ctx context.Context, method string, path string, paylo
 	if err != nil {
 		return 0, nil, err
 	}
-	return a.doUpstreamRequest(ctx, method, path, raw, "application/json")
+	return a.doUpstreamRequest(ctx, method, path, raw, mimeApplicationJSON)
 }
 
 func (a *app) forwardRawJSON(ctx context.Context, method string, path string, raw []byte) (int, []byte, error) {
-	return a.doUpstreamRequest(ctx, method, path, raw, "application/json")
+	return a.doUpstreamRequest(ctx, method, path, raw, mimeApplicationJSON)
 }
 
 func (a *app) doUpstreamRequest(ctx context.Context, method string, path string, payload []byte, contentType string) (int, []byte, error) {
@@ -1120,7 +1127,7 @@ func (a *app) newUpstreamRequest(ctx context.Context, method string, path string
 		return nil, err
 	}
 	if contentType != "" {
-		req.Header.Set("Content-Type", contentType)
+		req.Header.Set(headerContentType, contentType)
 	}
 	return req, nil
 }
@@ -1290,12 +1297,12 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 }
 
 func writeRawJSON(w http.ResponseWriter, status int, raw []byte) {
-	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set(headerContentType, mimeApplicationJSON)
 	w.WriteHeader(status)
 	_, _ = w.Write(raw)
 }
 
-func withQuery(path string, rawQuery string) string {
+func withQuery(path, rawQuery string) string {
 	if strings.TrimSpace(rawQuery) == "" {
 		return path
 	}
@@ -1308,7 +1315,7 @@ func readJSONPayload(w http.ResponseWriter, r *http.Request, maxBodyBytes int64,
 	if err != nil {
 		var maxErr *http.MaxBytesError
 		if errors.As(err, &maxErr) {
-			http.Error(w, "payload too large", http.StatusRequestEntityTooLarge)
+			http.Error(w, errMsgPayloadTooLarge, http.StatusRequestEntityTooLarge)
 			return nil, false
 		}
 		http.Error(w, invalidMessage, http.StatusBadRequest)
