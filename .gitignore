@@ -1,3 +1,6 @@
 /coverage.out
 /coverage.html
 *.log
+
+# Sonar / scanner artifacts
+.scannerwork/
