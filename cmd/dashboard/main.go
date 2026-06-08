@@ -82,10 +82,10 @@ const (
 )
 
 const (
-	errMsgPayloadTooLarge  = "payload too large"
-	errMsgFlowIDRequired   = "flow id is required"
-	headerContentType      = "Content-Type"
-	mimeApplicationJSON    = "application/json"
+	errMsgPayloadTooLarge = "payload too large"
+	errMsgFlowIDRequired  = "flow id is required"
+	headerContentType     = "Content-Type"
+	mimeApplicationJSON   = "application/json"
 )
 
 type pageData struct {
@@ -1122,7 +1122,7 @@ func (a *app) tryUpstreamOnce(ctx context.Context, method string, path string, p
 }
 
 func (a *app) newUpstreamRequest(ctx context.Context, method string, path string, payload []byte, contentType string) (*http.Request, error) {
-	req, err := http.NewRequestWithContext(ctx, method, a.simBaseURL+path, upstreamBody(payload))
+	req, err := http.NewRequestWithContext(ctx, method, a.simBaseURL+path, upstreamBody(payload)) //nolint:gosec // G704: simBaseURL is a configured internal URL, not user-supplied
 	if err != nil {
 		return nil, err
 	}
@@ -1140,11 +1140,11 @@ func upstreamBody(payload []byte) io.Reader {
 }
 
 func (a *app) doHTTP(req *http.Request) (int, []byte, error) {
-	resp, err := a.httpClient.Do(req)
+	resp, err := a.httpClient.Do(req) //nolint:gosec // G704: request URL originates from configured simBaseURL, not user input
 	if err != nil {
 		return 0, nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -1299,7 +1299,7 @@ func writeJSON(w http.ResponseWriter, status int, payload any) {
 func writeRawJSON(w http.ResponseWriter, status int, raw []byte) {
 	w.Header().Set(headerContentType, mimeApplicationJSON)
 	w.WriteHeader(status)
-	_, _ = w.Write(raw)
+	_, _ = w.Write(raw) //nolint:gosec // G705: writing pre-marshalled JSON to response writer; Content-Type is set to application/json
 }
 
 func withQuery(path, rawQuery string) string {
