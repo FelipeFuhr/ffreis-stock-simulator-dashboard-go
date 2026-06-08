@@ -14,9 +14,7 @@ linters:
     - ineffassign    # assignments with no effect
     - unused         # unexported symbols that are never used
 
-    # Style / formatting
-    - gofmt          # standard formatting
-    - goimports      # import grouping
+    # Style
     - misspell       # common English misspellings
 
     # Security
@@ -25,32 +23,42 @@ linters:
     # Bugs
     - bodyclose      # HTTP response body must be closed
     - noctx          # HTTP requests must carry context
-    - copylock       # mutexes must not be copied
 
     # Maintainability
     - godot          # comments must end in a period
     - nolintlint     # nolint directives must be specific and justified
 
-linters-settings:
-  errcheck:
-    check-type-assertions: true
-    check-blank: false  # `_ = expr` is intentional in tests
-  gosec:
-    excludes:
-      - G404   # weak random (math/rand) — acceptable outside crypto
-  godot:
-    scope: declarations
-    capital: false
-  goimports:
-    local-prefixes: ffreis-stock-simulator-dashboard-go
+  settings:
+    errcheck:
+      check-type-assertions: true
+      check-blank: false  # `_ = expr` is intentional in tests
+    gosec:
+      excludes:
+        - G404   # weak random (math/rand) — acceptable outside crypto
+    godot:
+      scope: declarations
+      capital: false
+
+  exclusions:
+    rules:
+      # Test files: relax errcheck, gosec, noctx (httptest.NewRequest is idiomatic in tests),
+      # and bodyclose (helpers manage body lifecycle internally).
+      - path: "_test\\.go"
+        linters: [errcheck, gosec, noctx, bodyclose]
+      # Generated files
+      - path: "vendor/"
+        linters: [all]
+
+formatters:
+  enable:
+    - gofmt          # standard formatting
+    - goimports      # import grouping
+
+  settings:
+    goimports:
+      local-prefixes:
+        - ffreis-stock-simulator-dashboard-go
 
 issues:
-  exclude-rules:
-    # Test files: relax errcheck and gosec
-    - path: "_test\\.go"
-      linters: [errcheck, gosec]
-    # Generated files
-    - path: "vendor/"
-      linters: [all]
   max-issues-per-linter: 0
   max-same-issues: 0
