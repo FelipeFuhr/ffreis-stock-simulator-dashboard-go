@@ -1,5 +1,6 @@
 (() => {
-  const boot = window.DASHBOARD_BOOT || { pollMs: 2000 };
+  // scan-fix(sonar:S7764): prefer globalThis over window
+  const boot = globalThis.DASHBOARD_BOOT || { pollMs: 2000 };
   const pollMs = Number(boot.pollMs || 2000);
 
   const statusLine = byId("status-line");
@@ -112,7 +113,7 @@
     const buttons = document.querySelectorAll(".tab-btn[data-tab]");
     buttons.forEach((button) => {
       button.addEventListener("click", () => {
-        const tab = button.getAttribute("data-tab") || "overview";
+        const tab = button.dataset.tab || "overview"; // scan-fix(sonar:S7761): dataset over getAttribute
         activateTab(tab);
       });
     });
@@ -556,8 +557,9 @@
     state.sim.activeFlowId = simDom.activeFlow.value;
   }
 
-  function renderSelect(select, flows, selectedId) {
-    const previous = selectedId || "";
+  // scan-fix(sonar:S7760): use default parameter instead of reassignment
+  function renderSelect(select, flows, selectedId = "") {
+    const previous = selectedId;
     const options = flows.map((flow) => {
       const labelPrefix = flow.flowType === "main" ? "[main]" : "[alt]";
       const label = `${labelPrefix} ${flow.flowId}`;
@@ -585,10 +587,10 @@
       const checked = state.sim.selectedAltFlowIds.has(flow.flowId) ? "checked" : "";
       const compareCell = isMain
         ? "<span class=\"pill tiny\">baseline</span>"
-        : `<input type=\"checkbox\" data-select-alt=\"${escapeHTML(flow.flowId)}\" ${checked} />`;
+        : `<input type="checkbox" data-select-alt="${escapeHTML(flow.flowId)}" ${checked} />`; // scan-fix(sonar:S6535): remove unnecessary \" in template literal
       const deleteButton = isMain
         ? "<button type=\"button\" disabled>Delete</button>"
-        : `<button type=\"button\" data-delete-flow=\"${escapeHTML(flow.flowId)}\">Delete</button>`;
+        : `<button type="button" data-delete-flow="${escapeHTML(flow.flowId)}">Delete</button>`; // scan-fix(sonar:S6535): remove unnecessary \" in template literal
 
       const rangeStart = flow.anchorStart;
       const rangeEnd = flow.anchorEnd;
@@ -617,7 +619,7 @@
 
     simDom.flowsBody.querySelectorAll("input[data-select-alt]").forEach((checkbox) => {
       checkbox.addEventListener("change", async (event) => {
-        const flowId = event.target.getAttribute("data-select-alt");
+        const flowId = event.target.dataset.selectAlt; // scan-fix(sonar:S7761): dataset over getAttribute
         if (!flowId) {
           return;
         }
@@ -633,11 +635,11 @@
 
     simDom.flowsBody.querySelectorAll("button[data-delete-flow]").forEach((button) => {
       button.addEventListener("click", async () => {
-        const flowId = button.getAttribute("data-delete-flow");
+        const flowId = button.dataset.deleteFlow; // scan-fix(sonar:S7761): dataset over getAttribute
         if (!flowId) {
           return;
         }
-        if (!window.confirm(`Delete alternative flow ${flowId}?`)) {
+        if (!globalThis.confirm(`Delete alternative flow ${flowId}?`)) { // scan-fix(sonar:S7764): globalThis over window
           return;
         }
         const response = await callJSON(`/api/sim/flows/${encodeURIComponent(flowId)}`, undefined, "DELETE");
@@ -716,7 +718,7 @@
       const metrics = state.sim.observations.get(flow.flowId);
       const deltaEquity = Number.isFinite(metrics?.equity) && Number.isFinite(mainMetrics?.equity)
         ? metrics.equity - mainMetrics.equity
-        : NaN;
+        : Number.NaN; // scan-fix(sonar:S7773): prefer Number.NaN over NaN
       rows.push(renderCompareRow(flow, metrics, deltaEquity));
     });
 
@@ -791,7 +793,7 @@
     const safeMain = Number.isFinite(sourceMainIndex) ? Math.trunc(sourceMainIndex) : 0;
     const safeRollback = Math.max(0, Math.trunc(rollbackSteps || 0));
     const target = safeMain - safeRollback;
-    return target < 0 ? 0 : target;
+    return Math.max(0, target); // scan-fix(sonar:S7766): Math.max over ternary
   }
 
   function addPatchRow(seed = {}) {
@@ -951,11 +953,15 @@
   }
 
   function normalizeFlows(payload) {
-    const items = Array.isArray(payload)
-      ? payload
-      : Array.isArray(payload.flows)
-        ? payload.flows
-        : [];
+    // scan-fix(sonar:S3358): extract nested ternary into independent statement
+    let items;
+    if (Array.isArray(payload)) {
+      items = payload;
+    } else if (Array.isArray(payload.flows)) {
+      items = payload.flows;
+    } else {
+      items = [];
+    }
 
     return items
       .map((raw) => normalizeFlow(raw))
@@ -1078,7 +1084,7 @@
         return n;
       }
     }
-    return NaN;
+    return Number.NaN; // scan-fix(sonar:S7773): prefer Number.NaN over NaN
   }
 
   function countMaybe(value) {
@@ -1121,8 +1127,8 @@
     return Math.trunc(value).toLocaleString();
   }
 
-  if (window.__DASHBOARD_TEST__ === true) {
-    window.__dashboardTestHooks = {
+  if (globalThis.__DASHBOARD_TEST__ === true) { // scan-fix(sonar:S7764): globalThis over window
+    globalThis.__dashboardTestHooks = { // scan-fix(sonar:S7764): globalThis over window
       buildBranchPayload,
       computeTargetMainIndex,
       normalizeFlows,
