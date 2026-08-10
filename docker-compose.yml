@@ -27,9 +27,16 @@ services:
     build:
       context: .
       dockerfile: Containerfile
-      args:
-        BUILDER_IMAGE: "${DASHBOARD_BUILDER_IMAGE:-golang:1.25.8-alpine}"
-        RUNTIME_IMAGE: "${DASHBOARD_RUNTIME_IMAGE:-gcr.io/distroless/static-debian12:nonroot}"
+      # scan-fix(ci:blank-build-arg): compose's ${VAR:-default} interpolation
+      # for these two build args was resolving to blank on GitHub-hosted
+      # runners regardless of COMPOSE_BAKE or explicit env vars ("base name
+      # (${RUNTIME_IMAGE}) should not be blank"), even though the same
+      # values were confirmed present in the job's env. Rather than chase an
+      # unreproducible compose-version-specific interpolation bug, dropped
+      # the compose-level override entirely — the Containerfile's own
+      # `ARG BUILDER_IMAGE=golang:1.25.8-alpine` / `ARG RUNTIME_IMAGE=
+      # gcr.io/distroless/static-debian12:nonroot` defaults already match
+      # what every caller here wants.
     image: ffreis-stock-dashboard:local
     environment:
       SIMULATOR_BASE_URL: http://simulator:8000
