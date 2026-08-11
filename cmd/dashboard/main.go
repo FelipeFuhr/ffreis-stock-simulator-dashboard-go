@@ -368,7 +368,16 @@ func newApp(logger *slog.Logger, mc *metricsCollector, tmpl *template.Template, 
 
 func newHTTPHandler(logger *slog.Logger, mc *metricsCollector, a *app, staticSubFS fs.FS, cfg runConfig) http.Handler {
 	mux := http.NewServeMux()
-	mux.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSubFS))))
+	// scan-fix(test:coverage-backfill): scoped to "GET /static/" — the bare
+	// "/static/" pattern (any method) conflicts with the "GET /" catch-all
+	// registered below under Go 1.22+'s enhanced ServeMux routing rules
+	// (neither pattern dominates the other: one is broader on method, the
+	// other on path), which panics at mux-construction time on every call to
+	// newHTTPHandler — i.e. on every real server startup. Static assets are
+	// only ever fetched via GET, so scoping the method is a safe, behavior-
+	// preserving fix. Caught by the new wiring_test.go coverage added here;
+	// no test previously exercised newHTTPHandler directly.
+	mux.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.FS(staticSubFS))))
 	for _, route := range a.baseRouteBindings(cfg.pollMs) {
 		mux.HandleFunc(route.Pattern, route.Handler)
 	}
@@ -1279,12 +1288,20 @@ func (m *metricsCollector) observeUpstream(endpoint, result string, duration tim
 	m.upstreamDuration.WithLabelValues(endpoint).Observe(duration.Seconds())
 }
 
+// scan-fix(test:coverage-backfill): every pattern below is now method-scoped.
+// The bare "/debug/pprof/..." form (any method) conflicts with the "GET /"
+// catch-all under Go 1.22+'s enhanced ServeMux routing — see the identical
+// fix and rationale on the "/static/" registration above. /debug/pprof/symbol
+// keeps both GET and POST (net/http/pprof.Symbol supports a POST body for
+// large address lists); the rest are GET-only in normal use (browser/`go tool
+// pprof` fetch them via GET).
 func registerPprofRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("/debug/pprof/", pprof.Index)
-	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
-	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
-	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
-	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
+	mux.HandleFunc("GET /debug/pprof/", pprof.Index)
+	mux.HandleFunc("GET /debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("GET /debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("GET /debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("POST /debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("GET /debug/pprof/trace", pprof.Trace)
 }
 
 func writeJSON(w http.ResponseWriter, status int, payload any) {
