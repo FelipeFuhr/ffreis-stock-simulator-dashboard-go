@@ -41,6 +41,9 @@ jobs:
     needs: [fmt]
     permissions:
       contents: read
+      # scan-fix(startup_failure): callee go-lint.yml also requires
+      # pull-requests: read (golangci-lint-action fetching PR context).
+      pull-requests: read
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-lint.yml@c3d274cf44074f49908948305861c74714cdc9d9 # v1.3.0
     with:
       go-version: "1.25.8"
@@ -51,8 +54,10 @@ jobs:
     needs: [fmt]
     permissions:
       contents: read
+      # scan-fix(startup_failure): callee go-test.yml unconditionally requests
+      # id-token: write for its optional L2 S3-cache OIDC step (no-op here).
+      id-token: write
     uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-test.yml@c3d274cf44074f49908948305861c74714cdc9d9 # v1.3.0
     with:
       go-version: "1.25.8"
       working-directory: "."
-
