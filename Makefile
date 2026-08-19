@@ -17,18 +17,19 @@ LEFTHOOK_VERSION ?= 1.7.10
 
 MUTATION_PACKAGES ?= ./internal/...
 MUTATION_THRESHOLD ?= 60
-COVERAGE_MIN      ?= 51
+COVERAGE_MIN      ?= 75
 COVERAGE_PACKAGES ?= ./...
 LEFTHOOK_DIR ?= $(CURDIR)/.bin
 LEFTHOOK_BIN ?= $(LEFTHOOK_DIR)/lefthook
 
-.PHONY: mutation-test help \
+.PHONY: mutation help \
 	docker-build compose-up compose-down \
 	fmt-check lint test build-check openapi-drift-check secrets-scan-staged quality-gates hook-generated-drift \
+	coverage-gate integration-coverage-gate \
 	lefthook-bootstrap lefthook-install lefthook-run lefthook
 
-## mutation-test: run mutation testing with gremlins (slow — intended for CI/weekly)
-mutation-test: ## Run mutation testing with gremlins (slow — CI only)
+## mutation: run mutation testing with gremlins (slow — intended for CI/weekly)
+mutation: ## Run mutation testing with gremlins (slow — CI only)
 	@which gremlins >/dev/null 2>&1 || go install github.com/go-gremlins/gremlins/cmd/gremlins@latest
 	gremlins unleash --threshold-efficacy $(MUTATION_THRESHOLD) $(MUTATION_PACKAGES)
 
@@ -83,6 +84,10 @@ coverage-gate:
 	@COVERAGE_MIN="$(COVERAGE_MIN)" COVERAGE_PACKAGES="$(COVERAGE_PACKAGES)" \
 		./scripts/hooks/check_coverage_gate.sh
 
+## integration-coverage-gate: run //go:build integration tests with coverage; no-op if none exist
+integration-coverage-gate:
+	@COVERAGE_MIN="$(COVERAGE_MIN)" ./scripts/hooks/check_integration_coverage_gate.sh
+
 quality-gates: ## Run strict pre-push dashboard quality gates
 	@./scripts/hooks/check_required_tools.sh $(GOVULNCHECK)
 	$(MAKE) lint
@@ -125,7 +130,7 @@ lefthook-run: lefthook-bootstrap ## Run hooks (pre-commit + commit-msg + pre-pus
 
 lefthook: lefthook-bootstrap lefthook-install lefthook-run ## Install hooks and run them
 
-PLATFORM_STANDARDS_SHA ?= 3c787edb4e96ddea2e86b2add2c32139685e8db7  # v1.2.1
+PLATFORM_STANDARDS_SHA ?= 273842219190739c6b462c21331b234271446b13  # v1.10.0
 PLATFORM_STANDARDS_RAW ?= https://raw.githubusercontent.com/FelipeFuhr/ffreis-platform-standards
 
 install-act: ## Download pinned act binary into .bin/

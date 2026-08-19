@@ -1,4 +1,4 @@
-name: Dashboard Coverage (Codecov)
+name: Dashboard Coverage
 
 on:
   pull_request:
@@ -18,24 +18,17 @@ concurrency:
 
 jobs:
   coverage:
-    timeout-minutes: 30
-    if: ${{ !github.event.pull_request.draft }}
     permissions:
       contents: read
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
-        with:
-          go-version-file: go.mod
-          cache: true
-      - name: Run tests with coverage
-        run: go test ./... -coverprofile=coverage.out -covermode=atomic
-      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
-        with:
-          name: dashboard-coverage
-          path: coverage.out
-      - uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354
-        with:
-          files: coverage.out
-          fail_ci_if_error: false
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-coverage.yml@c3d274cf44074f49908948305861c74714cdc9d9 # v1.3.0
+    with:
+      working-directory: .
+      coverage-threshold: 75
+
+  integration-coverage:
+    permissions:
+      contents: read
+    uses: FelipeFuhr/ffreis-workflows-go/.github/workflows/go-integration-coverage.yml@c3d274cf44074f49908948305861c74714cdc9d9 # v1.3.0
+    with:
+      working-directory: .
+      coverage-threshold: 75

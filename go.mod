@@ -2,7 +2,9 @@ module ffreis-stock-simulator-dashboard-go
 
 go 1.25.8
 
-toolchain go1.25.12
+// scan-fix(govulncheck): bumped to go1.25.13 — fixes 6 stdlib CVEs
+// (GO-2026-5026 et al. in net/http, encoding/asn1) present in go1.25.12.
+toolchain go1.25.13
 
 require (
 	github.com/prometheus/client_golang v1.23.2
