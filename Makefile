@@ -33,6 +33,12 @@ mutation: ## Run mutation testing with gremlins (slow — CI only)
 	@which gremlins >/dev/null 2>&1 || go install github.com/go-gremlins/gremlins/cmd/gremlins@latest
 	gremlins unleash --threshold-efficacy $(MUTATION_THRESHOLD) $(MUTATION_PACKAGES)
 
+build-all: ## Cross-build check (the lefthook release tier's cross-build step) — same as build-check, this repo has one binary
+	go build ./cmd/dashboard
+
+fuzz: ## No-op: no Fuzz test functions exist in this repo yet
+	@echo "fuzz: no Fuzz*() test functions exist in this codebase — nothing to run"
+
 help: ## Show help
 	@awk 'BEGIN {FS = ":.*##"} /^[a-zA-Z0-9_.-]+:.*##/ {printf "\033[36m%-20s\033[0m %s\n", $$1, $$2}' $(MAKEFILE_LIST)
 
