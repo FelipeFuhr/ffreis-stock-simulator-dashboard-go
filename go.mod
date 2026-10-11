@@ -1,10 +1,14 @@
 module ffreis-stock-simulator-dashboard-go
 
-go 1.25.8
+go 1.26.0
 
-// scan-fix(govulncheck): bumped to go1.25.13 — fixes 6 stdlib CVEs
-// (GO-2026-5026 et al. in net/http, encoding/asn1) present in go1.25.12.
-toolchain go1.25.13
+// scan-fix(govulncheck): go1.25.13 fixed 6 earlier stdlib CVEs (GO-2026-5026
+// et al. in net/http, encoding/asn1). A further batch (GO-2026-6617 et al.,
+// net/http/net/textproto/crypto/tls) landed since, failing `make
+// quality-gates` (govulncheck exits non-zero on ANY detected vulnerability,
+// reachable or not). go1.26.9 fixes all of them; govulncheck now reports
+// none at all.
+toolchain go1.26.9
 
 require (
 	github.com/prometheus/client_golang v1.23.2
@@ -20,6 +24,6 @@ require (
 	github.com/prometheus/common v0.66.1 // indirect
 	github.com/prometheus/procfs v0.16.1 // indirect
 	go.yaml.in/yaml/v2 v2.4.2 // indirect
-	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/sys v0.48.0 // indirect
 	google.golang.org/protobuf v1.36.8 // indirect
 )
